@@ -1,0 +1,95 @@
+MyFolderInfo = dir('DB1_B');
+f1=[];
+d1=[];
+t=[];
+m=1;
+fc=[];
+descList = {'BPPC','GDP','GDP2','GLTP','IWBC',...
+            'LAP','LBP','LDiP','LDiPv','LDN',...
+            'LDTP','LFD','LGBPHS','LGDiP','LGIP',...
+            'LGP','LGTrP','LMP','LPQ','LTeP',...
+            'LTrP','MBC','MBP','MRELBP','MTP',...
+            'mWLD','PHOG'};
+options.gridHist = 1;
+de=23;
+desc = descList{de};
+descFunc = str2func(['desc_' desc]);
+Descr_result=[];
+for image_no=3:length(MyFolderInfo)
+     img = imread(MyFolderInfo(image_no).name);
+    [feaIns, imgDesc] = descFunc(double(img),options);
+    Descr_result=[Descr_result;feaIns];
+end
+%% 
+h=1;
+feature1=[];
+for i=1:8:80
+    feature1{
+end
+fet=[];
+Descr_result1=Descr_result';
+for i=1:9 %1,3,5,7
+    fet(:,1:8)=Descr_result(:,1:8);
+    %[feature1{i,1}',feature1{i,3}',feature1{i,5}',feature1{i,7}',feature1{i,2}',feature1{i,4}',feature1{i,6}',feature1{i,8}'];
+    feat(:,1)=(fet(:,1)-mean(mean(fet,2)));
+   feat(:,2)=(fet(:,2)-mean(mean(fet,2)));
+    feat(:,3)=(fet(:,3)-mean(mean(fet,2)));
+    feat(:,4)=(fet(:,4)-mean(mean(fet,2)));
+%      feat(:,5)=(fet(:,5)-mean(mean(fet,2)));
+%    feat(:,6)=(fet(:,6)-mean(mean(fet,2)));
+%    feat(:,7)=(fet(:,7)-mean(mean(fet,2)));
+%     feat(:,8)=(fet(:,8)-mean(mean(fet,2)));
+    
+    weight_matrix1=cov(feat');
+    %weight_matrix1=feat*feat';
+    [V,D] =eigs(weight_matrix1',256);
+    [d,ind] = sort(diag(D),'descend');
+    d1=abs(d)<=10^2;
+    d3{i}=d1;
+    ind1=ind(d1);
+     %d1=d;
+    Ds = D(ind1,ind1);
+    Vs = V(:,ind1);
+    model.vs{i}=Vs';
+
+end
+
+A = zeros(80,4);
+[rows columns] = size(A);
+secondColumn = imresize((1:rows/8)', [rows, 1], 'nearest');
+A(:, 2) = secondColumn;
+%% 
+y=secondColumn;
+X=Descr_result;
+[m,n]=size(X);
+for i=1:n
+    X(:,i)=(X(:,i)-min(X(:,i)))/(max(X(:,i))-min(X(:,i))+eps);
+end
+diste=[];
+for i=1:80
+    for j=1:80
+        diste(i,j)=1-norm(X(i,:)-X(j,:))/(norm(X(i,:))+norm(X(j,:)));
+    end
+end
+
+[a,b]=relieff(X,y,10);
+ss=1;
+for i=1:length(a)
+    if b(i)>0
+        poz(:,ss)=X(:,i);
+        ss=ss+1;
+    end
+end
+mdl = fscnca(poz,y,'Solver','sgd','Verbose',1);
+w=mdl.FeatureWeights;
+[aa,ind]=sort(w,'desc');
+tt=62;
+for i=1:tt
+    cd(:,i)=poz(:,ind(i));
+end
+cd(:,tt+1)=y;
+for i=1:80
+    for j=1:80
+        dist(i,j)=1-norm(cd(i,:)-cd(j,:))/(norm(cd(i,:))+norm(cd(j,:)));
+    end
+end
